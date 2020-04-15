@@ -1,0 +1,3 @@
+This file (Biomart_EnsemblG94_GRCh38_p12) is the dictionary we use to add to the GISTIC data the Ensemble_ID tagg, to be able to merge it with the network data.
+
+Biomart_EnsemblG94_GRCh38_p12_only_protein_codeing is the same file but with non protein codeing genes and genes not anottated in the nuclear genome filtered out. The script BioMart_processig_pipeline.R perfomres this task.

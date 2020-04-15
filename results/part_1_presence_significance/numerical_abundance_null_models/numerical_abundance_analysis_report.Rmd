@@ -1,0 +1,257 @@
+---
+title: "Numerical Abundance Analysis Report"
+author: "Santiago Manuel Castro Dau"
+date: "March 10th, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(cowplot)
+library(vroom)
+library(tidyverse)
+
+# Set working directory
+knitr::opts_knit$set(root.dir = "/Users/Santiago/SCNA_Proyect/")
+```
+## Introduction
+Mutual information (MI) transcriptional networks recover the most meaningful correlations between the expression profiles of any to given genes in a transcriptome analysis. While it is not hard to imagine that the most meaningful interactions involve important elements of the regulatory network, a much safer and equally useful assumption is that the network in its entirety is a reflection of the underlying phenotype. With that in mind, this work intends to examine to what extent do SCNAs mold the transcriptional panorama. 
+
+In this section we will try to illustrate how SCNAs can affect the transcriptional landscape by asking how present are these SCNAs in our MI networks.
+
+1. First we will probe whether the significant SCNA's found by the GISTIC algorithm are also present in COSMIC's SCNAs' database. We also ask weather a significant portion of the most recurrently amplified and deleted genes in COSMIC's SCNAs' database are recovered by the GISTIC algorithm (not only the entire set of reported SCNAs.
+
+2. In the second part of this analysis we will explore whether the presence of these SCNAs' (which consists of different genes for each subtype) is significantly enriched in our networks. To do this we randomly sampled a set of protein coding genes of the same size as the size of our SCNAs' set and measured and compared the size of the intersection of these sets with the set of the genes present in our networks. To ensure that the size of the network did not bias the analysis we performed this comparison with three different network sizes.
+
+3. Lastly, we wanted to see if the amount of SCNAs that we found in our networks was significantly enriched in the networks compared to their presence in the healthy network. To do this we performed an other intersection comparison. Likewise, we performed this assay on three network sizes to check for size bias. 
+
+## Checking SCNAs congruence with COSMIC
+The first thing we wanted to do was to find out if the SCNAs that we deemed as significant had previously been reported in the COSMIC database (https://cancer.sanger.ac.uk/cosmic). We hoped to find a great number of genes which were reported both in COSMIC and also recovered by our analysis, as this would confer a certain degree of certainty to the later. However we also expected to find a number of SCNAs that were not reported in COSMIC, especially after realizing that none of the analyzed breast cancer samples in COSMIC belonged (or at leas were not annotated as such) to the the subtypes certain to our analysis. 
+
+By parsing COSMIC's breast cancer's SCNAs data we realized almost every protein coding gene in the genome had a reported SCNAs. Therefore, the intersection between the set of genes recovered by our analysis and set of genes with reported SCNAs in COSMIC was almost the complete set of genes recovered by our analysis. Consequently we filtered COSMIC's SCNAs by frequency, obtaining a set of almost equal size to our GISTIC set in order to perform a more informative intersection analysis. This assay is summarized by the following graph:
+
+```{r, echo=FALSE, fig.align="center",warning=FALSE, fig.width=7,fig.height=5}
+# Reading plots
+COSMIC_fig <- readRDS(file = "results/part_1_presence_significance/numerical_abundance_null_models/GISTIC_COSMIC_fig.rds")
+
+# Plottiong
+COSMIC_fig
+```
+
+We can observe from this figure that the amount of genes present in both sets is significant but not overwhelmingly big for any of the subtypes. We hypothesize that this is primarily because COSMIC's SCNAs breast cancer data base dose not include samples that are categorized under these four subtypes, which in turn could suggest that the SCNAs that we found as significant through the GISTIC algorithm are unrepresented in the database or have very low frequencies, which would mean that they got filtered out in our pipeline. Even thou we were expecting to find a bigger intersection between these two sets, the results are still indicative of congruence between our analysis and other SCNAs assays in other breast caner samples.   
+
+## Are SCNAs enriched in our networks (Part 1)?
+For our second analysis we wanted to know if our sets of significant SCNAs were enriched in our MI networks. To prove this we measured the amount of genes that intersect between our GISTIC set and the set of the genes present in the MI network and compared this measurement to the measurement of the intersection between the set of genes in the network and randomly sampled sets of protein coding genes of the same size as our GISTIC set. To examine whether the size of the network biased this analysis we performed this comparison with three different network sizes. The results are summarized in the following graphs:
+
+```{r, echo=FALSE, fig.align="center", fig.width=10,fig.height=11}
+# Reading plots
+enrich_1332 <- readRDS(file = "results/part_1_presence_significance/numerical_abundance_null_models/GISTIC_network_1332.rds")
+enrich_13317 <- readRDS(file = "results/part_1_presence_significance/numerical_abundance_null_models/GISTIC_network_13317.rds")
+enrich_133170 <- readRDS(file = "results/part_1_presence_significance/numerical_abundance_null_models/GISTIC_network_133170.rds")
+
+# Removing title
+enrich_13317 <- enrich_13317 + 
+  theme(legend.position = "none") +
+  labs(title = "13317 edges")
+enrich_133170 <- enrich_133170 + theme(legend.position = "none") +
+  labs(title = "133170 edges")
+
+bottom_row <- plot_grid(enrich_13317,
+                        enrich_133170)
+
+plot_grid(enrich_1332,
+          bottom_row,
+          ncol = 1)
+```
+
+In the top graph (networks with 1332 edges) we can see that the GISTIC set is significantly enriched in our MI networks except for the Basal subtype. We can observe this tendency better in the following graphs: 
+
+```{r, echo=FALSE, fig.align="center", fig.width=10,fig.height=11, warning=FALSE}
+# Reading plots
+basal_enrich <- readRDS("results/part_1_presence_significance/numerical_abundance_null_models/basal_network_enrichment_ratio.rds")
+her2_enrich <- readRDS("results/part_1_presence_significance/numerical_abundance_null_models/her2_network_enrichment_ratio.rds")
+luma_enrich <- readRDS("results/part_1_presence_significance/numerical_abundance_null_models/luma_network_enrichment_ratio.rds")
+lumb_enrich <- readRDS("results/part_1_presence_significance/numerical_abundance_null_models/lumb_network_enrichment_ratio.rds")
+
+# Removing title
+her2_enrich <- her2_enrich + 
+  theme(legend.position = "none") +
+  labs(title = "Her2")
+
+luma_enrich <- luma_enrich + 
+  theme(legend.position = "none") +
+  labs(title = "Lum A")
+
+lumb_enrich <- lumb_enrich + 
+  theme(legend.position = "none") +
+  labs(title = "Lum B")
+
+#Arrangeing
+bottom_row_ratio <- plot_grid(her2_enrich,
+                              luma_enrich,
+                              lumb_enrich)
+
+# Plotting
+plot_grid(basal_enrich,
+          bottom_row_ratio,
+          ncol = 1)
+
+```
+
+The analysis followed form the hypothesis that if SCNAs somehow influence the transnational panorama, then perhaps they would become important elements of the transcription program (as in elements who's expression profile strongly correlates to other genes profiles) and therefore  would be over-represented in MI networks. We would then expect to see this specific set of positively selected genes (the GISTIC set) to be more significantly present in our MI networks (have bigger intersections) than sets of random "non positively selected" genes. The results indicate that or hypothesis is correct, at least for three of the four subtypes, although all subtypes exhibit a reduction in their intersection difference as the network size grows. Another interesting observation is that the random set intersection remains almost constant through the different network sizes and the level at which they remain constant is somewhat proportional to the size of the GISTIC set (which is the size of the random sample sets). This means that as we make our networks smaller and leave only the most meaningful genes and interactions, the probability of having a certain amount of random genes (from a random sampling set of given size) in these networks remains constant and its proportional to the size of the set. However, with SCNAs, as we reduce the networks' size their relative abundance becomes greater. In other words the smaller the network, the more we recover only the most important regulatory elements, and the more this regulatory elements are SCNAs. This is strong evidence that the SCNAs influence the regulatory program. However, as you may have already noticed, we only observe this design for 3 out of the four breast cancer subtypes.
+
+This poses an interesting finding given that out of the four subtypes, Basal is considered as the most aggressive form of breast cancer and is also the subtype where the most drastic change in network topology is observed. To get an idea of why this might be happening we plotted the size of the GISTIC set, hoping to find a size difference that might help explain this observation. We also plotted the ratio of the size sets to the complete set of network nodes for each size and each subtype. However, we hypothesis that the size of the set only influences the "base-line" (the constant value of the intersection ratio of the sampling sets) value of the ratio. The next graphs are included as possible aids for hypothesis generation but at this time, we have no possible explanation to this outlier phenomena. 
+
+A key piece of information that we can consider to answer the mystery of Basal's aberrant behavior is that the percentage of the intersection of the GISTIC set is very similar to that of the random samples. This implies that for this subtype, the underlying assumption in our hypothesis is incorrect, this is that SCNA's get positively selected as important regulatory elements (it would seem that the GISTIC set for the basal subtype are randomly sampled genes). However, more information is necessary to make a decisive conclusion.
+
+```{r, echo=FALSE, fig.align="center", fig.width=5,fig.height=5, warning=FALSE}
+subtype_list <- c("basal", "her2", "luma", "lumb")
+
+working_tibble <- tibble()
+
+for (subtype in subtype_list) {
+  path_SCNAs <- paste("data/GISTIC_processed_data/",
+                        subtype,
+                        "/genes_w_Gscore_filtered.tsv",
+                        sep = "")
+    
+  SCNAs <- vroom(file = path_SCNAs,
+                 delim = "\t",
+                 col_types = c(col_character(), col_double()))
+    
+  working_tibble <- bind_rows(working_tibble,
+                              SCNAs %>% 
+                                mutate(is_ = subtype) %>% 
+                                group_by(is_) %>% 
+                                summarise(count = n()))
+}
+
+working_tibble %>% 
+  ggplot(mapping = aes(y = count,
+                       x = as.factor(is_))) + 
+  geom_bar(position = "dodge",
+           stat = "identity") +
+  labs(title = "Size of GISTIC set",
+       y = "Number of genes",
+       x = "Subtypes") + 
+  theme_minimal()
+
+```
+
+```{r, echo=FALSE, fig.align="center", fig.width=8,fig.height=5, warning=FALSE}
+subtype_list <- c("basal", "her2", "luma", "lumb")
+subtype <- "basal"
+
+working_tibble <- tibble()
+
+network_sizes <- c(1332, 13317, 133170)
+size <- 1332
+
+# 1st Loop start
+for(size in network_sizes) {
+
+  for (subtype in subtype_list) {
+    
+    # Loading network
+      net_path <- paste("data/network_data/",
+                        subtype,
+                        "/",
+                        subtype,
+                        "_norm_133k_interactions.sif",
+                        sep = "")
+      
+      net <- vroom(file = net_path,
+                   delim = "\t",
+                   col_types = c(col_character(), col_double()))
+      
+      # Filtering network and creating list of unique elements in the network
+      net <- net %>% 
+        top_n(size, MI)
+      
+      nodes <- bind_rows(net %>% select(gene_stable_id = target),
+                         net %>% select(gene_stable_id = source)) %>%
+        distinct() %>%
+        mutate(subtype = subtype) %>% 
+        mutate(is_ = "net_nodes")
+    
+      # Loading SCNAs an counting number of SCNA's for each subtype
+      path_SCNAs <- paste("data/GISTIC_processed_data/",
+                            subtype,
+                            "/genes_w_Gscore_filtered.tsv",
+                            sep = "")
+        
+      SCNAs <- vroom(file = path_SCNAs,
+                     delim = "\t",
+                     col_types = c(col_character(), col_double()))
+      
+      # Writing summary to outside object
+      working_tibble <- bind_rows(working_tibble,
+                                  SCNAs %>% 
+                                    mutate(subtype = subtype) %>%
+                                    mutate(is_ = "is_GISTIC") %>% 
+                                    group_by(is_, subtype) %>% 
+                                    summarise(count = n()) %>% 
+                                    mutate(net_size = size),
+                                  nodes %>% 
+                                    group_by(subtype, is_) %>% 
+                                    summarise(count = n()) %>% 
+                                    mutate(net_size = size))
+  }
+}
+
+working_tibble %>% 
+  pivot_wider(names_from = is_, values_from = count) %>% 
+  mutate(ratio = is_GISTIC/net_nodes) %>%
+  ggplot(mapping = aes(fill = subtype,
+                       y = ratio,
+                       x = net_size)) + 
+  geom_bar(position = "dodge",
+           stat = "identity") +
+  labs(title = "Ratio of GISTIC set to genes in network",
+       y = "Ratio",
+       x = "Network Size",
+       fill = "Subtype") + 
+  theme_minimal()
+```
+
+
+## Are SCNAs enriched in our networks (Part 2)?
+In the last section we compared the intersection of the GISTIC sets with that of random sets of the same size. In this section we will explore the intersection of the GISTIC sets compared to the intersection of the same sets in the healthy network. This analysis follows the same hypothesis, where if SCNAs somehow mold the transcriptional panorama, and if by doing so they become important regulatory elements (correlate strongly to the expression profile of other genes), then we would expect to see these genes more present in our neoplastic networks when compared to the presence of the same set of genes but in the healthy network. To explore this possibility we plotted the ratio of GISTIC genes in the cancer network and the ratio of the same genes in the healthy network.
+
+```{r, echo=FALSE, fig.align="center", fig.width=10,fig.height=11, warning=FALSE}
+# Reading plots
+basal_healthy <- readRDS("results/part_1_presence_significance/numerical_abundance_null_models/basal_healthy_ratio.rds")
+her2_healthy <- readRDS("results/part_1_presence_significance/numerical_abundance_null_models/her2_healthy_ratio.rds")
+luma_healthy <- readRDS("results/part_1_presence_significance/numerical_abundance_null_models/luma_healthy_ratio.rds")
+lumb_healthy <- readRDS("results/part_1_presence_significance/numerical_abundance_null_models/lumb_healthy_ratio.rds")
+
+# Removing title
+her2_healthy <- her2_healthy + 
+  theme(legend.position = "none") +
+  labs(title = "Her2")
+
+luma_healthy <- luma_healthy + 
+  theme(legend.position = "none") +
+  labs(title = "Lum A")
+
+lumb_healthy <- lumb_healthy + 
+  theme(legend.position = "none") +
+  labs(title = "Lum B")
+
+#Arrangeing
+bottom_row_ratio <- plot_grid(her2_healthy,
+                              luma_healthy,
+                              lumb_healthy)
+
+# Plotting
+plot_grid(basal_healthy,
+          bottom_row_ratio,
+          ncol = 1)
+
+
+```
+
+Interestingly, we observe a similar design including the outlying behavior of the Basal subtype. In a way these plots are half the same plots as the ones above, because the red lines (the cancer network SCNAs ratio) is the same in both sets of graphs. What changes is the comparison standard and its meaning. In the last section, the blue lines represent the relative abundance of random sets of genes in the cancerous network, here it represents the relative abundance of the GISTIC set in the healthy network. It is interesting to see that the percentage at which these SCNAs are present in the healthy networks is very similar in value to the percentage at which random sets are present in the healthy networks of each subtype (green lines). It is also interesting that the ratio remains relatively constant through the network sizes. Taken together this seems to indicate that the GISTIC set resembles a random set of sampled genes in the healthy network, in contrast to the cancerous network where these genes are positively selected. It would seem (at leas for 3 out of 4 subtypes) that it is the mutational copy number process which earns them an above random presence in the cancerous networks. Similarly, we are left puzzled and in hope of ideas to explain the aberrant behavior of the basal subtype. It would seem again that the presence of basal SCNAs in the basal network, or in the healthy one, are not above (or below) random levels. This suggest that whatever is happening transcriptionaly in basal breast cancer, SCNAs do not get positively selected as important regulatory elements, which may indicate that the mutational copy number process is happening in a differetn way of other factors have more weight in the regulation of the program. 
+
+## Conclusion
+These analysis give us reasons to believe that the mutational copy number process turns its target genes into important regulatory components that are recovered in a MI correlation network. These evidence supports the already establish idea that structural genomic aberrations affect transcription. However, this analysis contributes to the generation of new knowledge because it performs an assessment of the effect of SCNAs at a systems level (that is, taking into account all the protein coding genes in the genome). In the next sections of this part of the project we will examine weather MI and node attributes can further support this idea that the SCNAs are at least in part responsible for the deregulation of the transnational program. 

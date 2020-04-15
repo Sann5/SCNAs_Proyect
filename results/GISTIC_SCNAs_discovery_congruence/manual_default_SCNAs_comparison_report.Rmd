@@ -1,0 +1,104 @@
+---
+title: "Manual and default SCNAs comparison report"
+author: "Santiago Manuel Castro Dau"
+date: "March 24th, 2020"
+output: html_document
+---
+
+<style>
+body {
+text-align: justify}
+</style>
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(cowplot)
+library(vroom)
+library(tidyverse)
+
+# Set working directory
+knitr::opts_knit$set(root.dir = "/Users/Santiago/SCNA_Proyect/")
+```
+## Introducción 
+Esta presentación tiene como propósito reportar las correcciones que se señalaron en la última reunión:
+
+1. Homogenizar los valores de q de corte para los cuatro subtipos.
+2. Realizar un análisis de enriquecimiento.
+3. Verificar que el conjunto de genes que GISTIC devuelve como significativamente amplificados/deletados sea el mismo que se está obteniendo a través del script de mapeo que desarrolle.
+
+### Homogenizar los valores q
+Anteriormente se contaba con cuatro valores de corte (uno para cada subtipo), donde q*n < 1, donde n es el número de genes con valores iguales o menores a q. Los valores de q de corte eran los siguientes:
+
+- Basal: q = 1/3545 = 0.0002820874
+- Her2: q = 1/1723 = 0.0005803831
+- Lum A: q = 1/1136 = 0.0008802817
+- Lum B: q = 1/2322 = 0.0004306632
+
+Con el fin de no aumentar la cantidad de SCNAs en cada set y consecuentemente aumentar la probabilidad de tener más falsos positivos se tomó el valor q más bajo, el de basal: 2.8E-04
+
+### Análisis de enriquecimiento
+Se filtraron los datos crudos de GISTIC con este nuevo valor de corte y se realizó entonces para cada subtipo y 12 tamaños de su red correspondiente, un análisis de enriquecimiento con la función enrichment(), que devolvía el FDR, que se traduce a la probabilidad de encontrar por azar ese mismo diseño (diseño = número de SCNAs presentes en las redes). El resultado se resume en las siguientes gráficas.
+
+```{r, echo=FALSE, fig.align="center", fig.width=10,fig.height=7, warning=FALSE}
+# Reading RDS files
+enrich <- readRDS("results/part_1_presence_significance/enrichment_analysis/enrichment_line_grapgh.rds")
+enrich_split <- readRDS("results/part_1_presence_significance/enrichment_analysis/enrichment_line_grapgh_splited.rds")
+
+# Plotting
+enrich
+enrich_split
+```
+
+Como podemos observar el enriquecimiento reproduce lo reportado anteriormente donde los subtipos her2, lum A y lum B, tienen un enriquecimiento significativo en SCNAs en sus respectivas redes, y este enriquecimiento disminuye a medida que la red se hace más grande. Como existe la posibilidad de que estos SCNAs sean importantes elementos regulatorios independientemente del fenotipo (neoplásico o sano), se hiso una lista (o un compilado) de los SCNAs significativos de los cuatro subtipos y se buscó si es que la red "sana" esta enriquecida en estos genes. Se puede observar que el enriquecimiento es significativamente menor que que el de her2, lum A y lum B, apoyando la idea de que quizá estos genes se vuelven importantes elementos regulatorios a partir de los eventos del cambio de número de copias. También es interesante notar que el enriquecimiento en la red sana es mayor que en la de basal. Quizá esto de deba a la presencia de SCNAs de los otros subtipos que aumentan el valor de enriquecimiento. Para comprobarlo se tendrá que hacer un análisis por subtipo, verificando que el enriquecimiento de cada set de SCNAs por separado. 
+
+### Verificación de los conjuntos de genes
+Por último se verifico que usando un mismo valor q de corte, que los SCNAs que regresa GISTIC por default y los que se obtuvieron manualmente mediante el script de mapeo, sean los mismos. Para esto se filtraron ambos sets de SCNAs y se comparó su contendió, el cual se resume en las siguientes tablas.
+
+#### q < 0.25
+```{r, echo=FALSE, fig.align="center", warning=FALSE}
+# Reading table
+set_comp_0.25 <- vroom(file = "results/GISTIC_SCNAs_discovery_congruence/gene_sets_comparison_2.5E-01.tsv",
+                       delim = "\t",
+                       col_types = c(col_character(), col_double()))
+
+# Printing tabkle
+knitr::kable(set_comp_0.25)
+```
+
+Como podemos ver hay una gran discrepancia entre sets, lo cual nos indica dos aspectos interesantes. Tanto en los SCNAs obtenidos de manera manual como los de default rescatan SCNAs que el otro no y si existe un traslape considerable entre amos sets. Intuitivamente se pensó que al bajar el valor de corte quizá la discrepancia fuera menor, así que se repitió el análisis con q <= 3.7E-04 (el valor de q menor de los SCNAs por default de los cuatro subtipos donde q*n < 1).
+
+#### q < 3.7E-04
+```{r, echo=FALSE, fig.align="center", warning=FALSE}
+# Reading table
+set_comp_0.00037 <- vroom(file = "results/GISTIC_SCNAs_discovery_congruence/gene_sets_comparison_3.7E-04.tsv",
+                       delim = "\t",
+                       col_types = c(col_character(), col_double()))
+
+# Printing tabkle
+knitr::kable(set_comp_0.00037)
+```
+
+La discrepancia sigue siendo considerable. Esto probablemente se deba a dos cosas principalmente: 1) El algoritmo de "peel-off" que utiliza GISTIC para discernir los picos más significativos, con el fin de solo seleccionar las regiones que probablemente contengan un driver, elimina muchos genes que de hecho están en regiones de alta significancia (q < 3.7E-04). Y 2) el algoritmo de mapeo no considera genes que no tengan por lo menos un pedazo de su cuerpo dentro de una de las regiones anotadas con valor q/valor G. Como la anotación del genoma con el “G score” y los valores q ocurre primero que el peel-off, puede suceder que ya en este paso (el peel-off), las regiones que no estaban anotadas sean "rellenadas" y los genes que anteriormente no caian en regiones anotadas ahora tienen un valor q y G gracias a la "suavización de la señal". Esta puede ser una posible explicación a las discrepancias pero también para el tamaño considerable de las intersecciones, ya que estos SCNAs podrian pertenecen a picos que el peel-off si rescato y genes que si caían en regiones anotadas.
+
+Finalmente se realizó el mismo análisis de enriquecimiento pero con los sets de SCNAs que devuelve GISTIC por default. 
+```{r, echo=FALSE, fig.align="center", fig.width=10,fig.height=7, warning=FALSE}
+# Reading RDS files
+enrich_def <- readRDS("results/part_1_presence_significance/enrichment_analysis/enrichment_line_grapgh_default.rds")
+
+# Plotting
+enrich_def
+```
+Como podemos observar el patrón de enriquecimiento se pierde casi por completo, incluso el patrón bien guardado que antes observábamos del enriquecimiento disminuyendo con el tamaño de la red. Quizá los genes que GISTIC está anotando al suavizar la señal de q/G esta introduciendo un montón de falsos positivos que se observan como ruido en el análisis de enriquecimiento, y quizá también el peel-off está eliminando genes que si estaban significativamente amplificados/deletados. 
+
+### Sobre la considerable discrepancia entre el conjunto de genes identificados como significativos por GISTIC2.0 y aquellos curados manualmente de uno de los outputs previos del algoritmo
+El acrónimo GISTIC quiere decir "Genomic Identification of Significant Targets in Cancer". Su objetivo es proveer a los usuarios de un pipeline que les regrese una lista de genes que están siendo "targeteados" por procesos de cambio en el numero de copias. Es importante notar la diferencia entre proveer una lista de genes "target" y una lista de genes que están significativamente amplificados o delatados.
+
+Se puede observar del siguiente segmento que dos de los objetivos de GISTIC son:
+
+1. Dotar de certeza estadística los resultados del analisi de SCNA y
+2. Incorporar en el análisis herramientas para discernir los genes "target" de los "passanger"
+
+*Existing copy-number methods have also used ad hoc heuristics to define the genomic regions likely to harbor true cancer gene targets. The inability of these methods to provide a priori statistical confidence has been a major limitation in interpreting copy-number analyses, an important problem as end-users typically use these results to prioritize candidate genes for time-consuming validation experiments.*
+
+Como nuestro análisis no pretende vislumbrar cuales de estos genes son genes conductores del cáncer, quizá sea mejor idea trabajar con la lista anotada del genoma donde viene la significancia estadística de las amplificaciones y deleciónes, previa a el análisis de discernimiento. Se piensa que el algoritmo de discernimiento es la razón por la cual se encuentra tan considerable discrepancia entre los conjuntos de datos antes y después del algoritmo de discernimiento.
+

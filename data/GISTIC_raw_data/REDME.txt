@@ -1,0 +1,13 @@
+This directories contain the output files of the GISTIC2.0 algorithm for each subtype.
+
+	-all_data_by_genes.txt: this file contains in the first three columns the Gene.Symbol, Gene.ID and Cytoband. After the third column 		each column represents the copy number value for that gene for a specific sample in the analysis. The number of columns corresponds 		to the number of samples minus three.
+
+	-scores.gistic: This file contains the Gscore information for all the genome. The data can be categorized in two: the top half has 		the Gscore information for amnplifications and the bottom half for the deletions. The first column specifies whether the row 		corresponsd to a amplification or a deletion. The data has the following columns:
+		-Type: Amp or Del             
+		-Chromosome        
+		-Start: in bp (genomic position)             
+		-End: in bp (genomic position)              
+		-X.log10.q.value 
+		-G.score           
+		-average.amplitude 
+		-frequency    
